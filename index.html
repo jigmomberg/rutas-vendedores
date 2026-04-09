@@ -671,6 +671,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- COTIZACION PARA IMPRIMIR -->
 <div id="cotizacion-print"></div>
 
+<!-- IMPORT MODE DIALOG -->
+<div id="import-dialog" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:600;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:320px;display:flex;flex-direction:column;gap:16px">
+    <div style="font-size:18px;font-weight:600;color:#1A1814;letter-spacing:-0.3px">¿Cómo importar?</div>
+    <div style="font-size:13px;color:#6B6760;line-height:1.5">Elige cómo quieres cargar los clientes del archivo:</div>
+    <button onclick="confirmImport('merge')" style="background:#1A1814;color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px">
+      <span>➕ Agregar a los existentes</span>
+      <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.6)">Los clientes actuales se mantienen, se suman los nuevos</span>
+    </button>
+    <button onclick="confirmImport('replace')" style="background:#fff;color:#1A1814;border:1.5px solid rgba(0,0,0,0.14);border-radius:12px;padding:14px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:3px">
+      <span>🔄 Reemplazar todo</span>
+      <span style="font-size:11px;font-weight:400;color:#9E9B96">Borra todos los clientes actuales y carga solo los del archivo</span>
+    </button>
+    <button onclick="closeImportDialog()" style="background:none;border:none;color:#9E9B96;font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;padding:4px">Cancelar</button>
+  </div>
+</div>
+
 <!-- FURGONES MODULE -->
 <div class="stock-screen" id="furgones-screen">
   <div class="stock-hdr">
@@ -1239,14 +1256,30 @@ function processPin(){
 }
 
 // ── IMPORT ───────────────────────────────────────────────────────────────────
+var _pendingCSV=null;
 function handleFile(input){
   var file=input.files[0];if(!file)return;
   var ext=file.name.split('.').pop().toLowerCase();
-  if(ext==='csv'){var r=new FileReader();r.onload=function(e){parseCSV(e.target.result);};r.readAsText(file,'UTF-8');}
-  else{var r2=new FileReader();r2.onload=function(e){var wb=XLSX.read(e.target.result,{type:'array'});var sn=wb.SheetNames.find(function(n){return n.toLowerCase().includes('clien');})||wb.SheetNames[0];parseCSV(XLSX.utils.sheet_to_csv(wb.Sheets[sn]));};r2.readAsArrayBuffer(file);}
+  if(ext==='csv'){var r=new FileReader();r.onload=function(e){_pendingCSV=e.target.result;showImportDialog();};r.readAsText(file,'UTF-8');}
+  else{var r2=new FileReader();r2.onload=function(e){var wb=XLSX.read(e.target.result,{type:'array'});var sn=wb.SheetNames.find(function(n){return n.toLowerCase().includes('clien');})||wb.SheetNames[0];_pendingCSV=XLSX.utils.sheet_to_csv(wb.Sheets[sn]);showImportDialog();};r2.readAsArrayBuffer(file);}
   input.value='';
 }
-function parseCSV(csv){
+function showImportDialog(){
+  document.getElementById('import-dialog').style.display='flex';
+}
+function closeImportDialog(){
+  document.getElementById('import-dialog').style.display='none';
+  _pendingCSV=null;
+}
+function confirmImport(mode){
+  document.getElementById('import-dialog').style.display='none';
+  if(_pendingCSV){parseCSV(_pendingCSV,mode);}
+  _pendingCSV=null;
+}
+function parseCSV(csv,mode){
+  // mode: 'merge' = agregar a lo que hay, 'replace' = reemplazar todo
+  if(mode==='replace'){clients={};notes={};}
+
   var res=Papa.parse(csv,{header:true,skipEmptyLines:true});
   if(!res.data||!res.data.length){showStatus('No se encontraron datos.','err');return;}
   var keys=Object.keys(res.data[0]);
