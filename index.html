@@ -2410,10 +2410,10 @@ function generarCotizacion(){
     var cols = hayPrecio ? 6 : 3;
     filas += '<tr style="background:#EEF4FF"><td colspan="'+cols+'" style="color:#1A4A82;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:5px 10px;border-bottom:1px solid #d0dcf0">'+cat+'</td></tr>';
     groups[cat].forEach(function(it){
-      var precioNeto = Math.round(it.precio || 0);
-      var precioIVA  = Math.round(precioNeto * 1.19);
-      var subNeto    = Math.round(it.qty * precioNeto);
+      var precioIVA  = Math.round(it.precio || 0);
+      var precioNeto = Math.round(precioIVA / 1.19);
       var subIVA     = Math.round(it.qty * precioIVA);
+      var subNeto    = Math.round(it.qty * precioNeto);
       totalIVA += subIVA;
       filas += '<tr>'
         +'<td style="color:#aaa;font-size:10px;width:24px">'+String(n++).padStart(2,'0')+'</td>'
@@ -2430,7 +2430,7 @@ function generarCotizacion(){
     });
   });
 
-  var totalNeto = cart.reduce(function(s,it){return s+Math.round((it.precio||0)*it.qty);},0);
+  var totalNeto = cart.reduce(function(s,it){return s+Math.round(Math.round((it.precio||0)/1.19)*it.qty);},0);
   var ivaAmt    = totalIVA - totalNeto;
 
   var thStyle = 'background:#1A4A82;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;';
